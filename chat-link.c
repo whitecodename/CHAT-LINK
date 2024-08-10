@@ -16,8 +16,7 @@ int main (int argc, char *argv[])
         server_redirect_to_error("Failed to initialize file descriptors");
     }
         
-    while(true)
-    {
+    while(true) {
         status = poll(fds.fds, fds.active_size, POLL_TIME);
         if (status == -1) {
             server_redirect_to_error("Failed to poll");

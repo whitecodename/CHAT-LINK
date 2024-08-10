@@ -10,14 +10,6 @@ int do_bind(int socket_fd, struct sockaddr *socket_addr)
     return bind(socket_fd, socket_addr, sizeof(*socket_addr));
 }
 
-/**
- * @brief Send a message to a socket.
- * 
- * @param socket_fd The file descriptor for the socket to send data to.
- * @param message Message to send
- * 
- * @return The number of bytes received on success, or -1 on error.
- */
 int send_message(int socket_fd, char *message)
 {
     if(socket_fd == -1)
@@ -26,14 +18,6 @@ int send_message(int socket_fd, char *message)
         return send(socket_fd, message, strlen(message), 0);
 }
 
-/**
- * @brief Receives a message from a socket and stores it in a buffer.
- *
- * @param socket_fd The file descriptor for the socket to receive data from.
- * @param buffer A pointer to a character array where the received message will be stored.
- *
- * @return The number of bytes received on success, or -1 on error.
- */
 int recv_message(int socket_fd, char *buffer)
 {
     if(socket_fd == -1)
@@ -42,13 +26,23 @@ int recv_message(int socket_fd, char *buffer)
         return recv(socket_fd, buffer, strlen(buffer), 0);
 }
 
+int init_server_port(Server *server, int argc, char *argv[])
+{
+    if (argc < 2) {
+        return -1;
+    }
+
+    server->port = atoi(argv[1]);
+
+    return 0;
+}
+
 void init_server_socket(Server *server, int argc, char *argv[])
 {
     /* Get port from command line */
-    if (argc < 2) {
+    if(init_server_port(server, argc, argv) == -1) {
         server_redirect_to_error("Usage: ./server <PORT>\n");
     }
-    server->port = atoi(argv[1]);
 
     int socket_fd = socket(AF_INET, SOCK_STREAM, 0);
     if (socket_fd == -1) {
@@ -56,13 +50,8 @@ void init_server_socket(Server *server, int argc, char *argv[])
     }
 
     /* Initializing socket address */
-    struct sockaddr_in socket_addr;
-
-    memset(&socket_addr, 0, sizeof(socket_addr));
-
-    socket_addr.sin_family = AF_INET;
-    socket_addr.sin_port = htons(server->port);
-    socket_addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+    struct sockaddr_in socket_addr = {};
+    init_socket_address(&socket_addr);
 
     /* Binding socket to socket address */
     if(do_bind(socket_fd, (struct sockaddr*)&socket_addr) == -1) {
@@ -75,6 +64,12 @@ void init_server_socket(Server *server, int argc, char *argv[])
     }
 
     server->fd = socket_fd;
+}
+
+void init_socket_address(struct sockaddr_in *socket_addr) {
+    socket_addr->sin_family = AF_INET;
+    socket_addr->sin_port = htons(server->port);
+    socket_addr->sin_addr.s_addr = htonl(INADDR_LOOPBACK);
 }
 
 int init_fds(Fds *fds, Server *server)
@@ -143,9 +138,9 @@ void append_client(Fds *fds, Client *client)
 
 int read_client_message(Server *server, Fds *fds, struct pollfd *fd)
 {
-    char buffer[BUF_SIZE_1] = {};
-    char msg_to_send[BUF_SIZE_2] = {};
-    int read_count, status, sender_fd, dest_fd;
+    char buffer[BUF_SIZE_2] = {};
+    char msg_to_send[BUF_SIZE_3] = {};
+    int read_count, sender_fd;
 
     sender_fd = fd->fd;
     read_count = recv(sender_fd, buffer, sizeof buffer, 0);
@@ -162,22 +157,29 @@ int read_client_message(Server *server, Fds *fds, struct pollfd *fd)
 
         return -1;
     } else {
-        server_message("Got message from client %d: %s", sender_fd, buffer);
+        server_message("Client %d message: %s", sender_fd, buffer);
 
-        sprintf(msg_to_send, "[%d] says: %s", sender_fd, buffer);
-
-        for(int j = 0; j < fds->active_size; j++) {
-            dest_fd = fds->fds[j].fd;
-
-            if (dest_fd != server->fd && dest_fd != sender_fd) {
-                status = send(dest_fd, msg_to_send, strlen(msg_to_send), 0);
-                if (status == -1) {
-                    server_redirect_to_error("Failed to send message");
-                }
-            }
-        }
-
+        sprintf(msg_to_send, "[%d]: %s", sender_fd, buffer);
+        diffuse_message(server, fds, sender_fd, msg_to_send);
     }
 
     return 0;
+}
+
+void diffuse_message(Server *server, Fds *fds, int sender_fd, char msg[BUF_SIZE_3])
+{
+    int client_fd, status;
+
+    for(int j = 0; j < fds->active_size; j++) {
+        client_fd = fds->fds[j].fd;
+
+        if (client_fd == server->fd || client_fd == sender_fd) {
+            continue;
+        }
+        
+        status = send(client_fd, msg, strlen(msg), 0);
+        if (status == -1) {
+            server_redirect_to_error("Failed to send message");
+        }
+    }
 }

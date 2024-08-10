@@ -14,5 +14,7 @@ Client* accept_client(Server *server, Fds *fds);
 void resize_fds(Fds *fds);
 void append_client(Fds *fds, Client *client);
 int read_client_message(Server *server, Fds *fds, struct pollfd *fd);
+void diffuse_message(Server *server, Fds *fds, int sender_fd, char msg[BUF_SIZE_3]);
+void init_socket_address(struct sockaddr_in *socket_addr);
 
 #endif // SOCKET_H
