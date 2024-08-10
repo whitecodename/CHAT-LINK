@@ -1,17 +1,15 @@
 #ifndef UTILS_H
 #define UTILS_H
 
-#include <arpa/inet.h>
-#include <netinet/in.h>
-#include <sys/types.h>
-#include <unistd.h>
-
 #include "defines.h"
 
+void server_redirect_to_error(char *message);
 void redirect_to_error(HOST host, char *message);
-int create_socket(void);
-int send_message(int connected_socket_fd, char *message);
-int recv_message(int connected_socket_fd, char *message);
+void client_redirect_to_error(char *message);
+void clearBuffer();
 int readString(char *buffer, int buffer_size);
+void server_message(const char *format, ...);
+void client_message(const char *format, ...);
+int init_server_port(Server server, int argc, char *argv[]);
 
 #endif // UTILS_H

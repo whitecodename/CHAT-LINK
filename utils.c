@@ -1,13 +1,8 @@
 #include "utils.h"
 
-/**
- * @brief Creates a socket in AF_INET domain using socket stream type with TCP protocol.
- * 
- * @return socket file descriptor
- */
-int create_socket()
+char* get_hostname(HOST host)
 {
-    return socket(AF_INET, SOCK_STREAM, 0);
+    return host == SERVER ? "SERVER" : "CLIENT";
 }
 
 /**
@@ -16,49 +11,20 @@ int create_socket()
  * @param host SERVER or CLIENT
  * @param message Error message
  */
+void server_redirect_to_error(char *message)
+{
+    redirect_to_error(SERVER, message);
+}
+
 void redirect_to_error(HOST host, char *message)
 {
-    char *hostname = (host == SERVER) ? "SERVER" : "CLIENT" ;
-
-    fprintf(stderr, "%s: %s\n", hostname, message);
+    fprintf(stderr, "%s: %s\n", get_hostname(host), message);
     exit(1);
 }
 
-int do_connect(int socket_fd, struct sockaddr *socket_addr)
+void client_redirect_to_error(char *message)
 {
-    return connect(socket_fd, socket_addr, sizeof(*socket_addr));
-}
-
-/**
- * @brief Send a message to a socket.
- * 
- * @param socket_fd The file descriptor for the socket to send data to.
- * @param message Message to send
- * 
- * @return The number of bytes received on success, or -1 on error.
- */
-int send_message(int socket_fd, char *message)
-{
-    if(socket_fd == -1)
-        redirect_to_error(CLIENT, "Failed to create socket");
-    else
-        return send(socket_fd, message, strlen(message), 0);
-}
-
-/**
- * @brief Receives a message from a socket and stores it in a buffer.
- *
- * @param socket_fd The file descriptor for the socket to receive data from.
- * @param buffer A pointer to a character array where the received message will be stored.
- *
- * @return The number of bytes received on success, or -1 on error.
- */
-int recv_message(int socket_fd, char *buffer)
-{
-    if(socket_fd == -1)
-        redirect_to_error(CLIENT, "Failed to create socket");
-    else
-        return recv(socket_fd, buffer, BUFFER_SIZE, 0);
+    redirect_to_error(CLIENT, message);
 }
 
 void clearBuffer()
@@ -92,4 +58,52 @@ int readString(char *buffer, int buffer_size)
         : clearBuffer();
 
     return 1;
+}
+
+/**
+ * @brief Function to print a server message with a given prefix.
+ *
+ * @param prefix The prefix string for the server message.
+ * @param format The format string for the message.
+ * @param ... The variable arguments to format the string.
+ */
+void server_message(const char *format, ...)
+{
+    va_list args;
+    va_start(args, format);
+
+    printf("[%s]: ", get_hostname(SERVER));
+    vprintf(format, args);
+    printf("\n");
+    
+    va_end(args);
+}
+
+/**
+ * @brief Function to print a server message with a given prefix.
+ *
+ * @param prefix The prefix string for the server message.
+ * @param format The format string for the message.
+ * @param ... The variable arguments to format the string.
+ */
+void client_message(const char *format, ...)
+{
+    va_list args;
+    va_start(args, format);
+    
+    printf("[%s]: ", get_hostname(CLIENT));
+    vprintf(format, args);
+    printf("\n");
+    
+    va_end(args);
+}
+
+int init_server_port(Server server, int argc, char *argv[]) {
+    if (argc < 2) {
+        printf("Usage: ./server <PORT>\n");
+        return -1;
+    }
+    server.port = atoi(argv[1]);
+    
+    return 0;
 }
