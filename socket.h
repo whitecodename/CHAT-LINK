@@ -7,6 +7,12 @@ int do_connect(int socket_fd, struct sockaddr *socket_addr);
 int do_bind(int socket_fd, struct sockaddr *socket_addr);
 int send_message(int socket_fd, char *message);
 int recv_message(int socket_fd, char *buffer);
-int init_server_socket(const int port);
+void init_server_socket(Server *server, int argc, char *argv[]);
+int init_fds(Fds *fds, Server *server);
+int fd_is_ready(struct pollfd *fd);
+Client* accept_client(Server *server, Fds *fds);
+void resize_fds(Fds *fds);
+void append_client(Fds *fds, Client *client);
+int read_client_message(Server *server, Fds *fds, struct pollfd *fd);
 
 #endif // SOCKET_H

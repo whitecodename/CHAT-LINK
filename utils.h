@@ -10,6 +10,5 @@ void clearBuffer();
 int readString(char *buffer, int buffer_size);
 void server_message(const char *format, ...);
 void client_message(const char *format, ...);
-int init_server_port(Server server, int argc, char *argv[]);
 
 #endif // UTILS_H

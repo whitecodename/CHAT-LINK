@@ -18,10 +18,12 @@
 
 #define LISTENING_PORT 5094
 #define MAX_CLIENTS 10
-#define BUF_SIZE_1 1024
-#define BUF_SIZE_2 (BUF_SIZE_1 * 2)
+#define BUF_SIZE_1 64
+#define BUF_SIZE_2 1024
+#define BUF_SIZE_3 (BUF_SIZE_2 * 2)
 #define START_POLL_SIZE (1 + 5)
 #define CONNECTION_HOST "127.0.0.1"
+#define POLL_TIME 2000
 
 typedef enum {
     SERVER, CLIENT
@@ -32,13 +34,19 @@ typedef enum {
 } bool;
 
 typedef struct {
-    int socket_fd;
+    int fd;
     int port;
 } Server;
 
 typedef struct {
+    int fd;
+    char name[BUF_SIZE_1];
+    char msg[BUF_SIZE_2];
+} Client;
+
+typedef struct {
     struct pollfd *fds;
-    int fds_size, fds_active_size;
+    int size, active_size;
 } Fds;
 
 #include "utils.h"

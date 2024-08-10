@@ -97,13 +97,3 @@ void client_message(const char *format, ...)
     
     va_end(args);
 }
-
-int init_server_port(Server server, int argc, char *argv[]) {
-    if (argc < 2) {
-        printf("Usage: ./server <PORT>\n");
-        return -1;
-    }
-    server.port = atoi(argv[1]);
-    
-    return 0;
-}
