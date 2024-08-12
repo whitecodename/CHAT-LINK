@@ -3,7 +3,7 @@
 
 #include "defines.h"
 
-void server_redirect_to_error(char *message);
+void server_redirect_to_error(Server *server);
 void redirect_to_error(HOST host, char *message);
 void client_redirect_to_error(char *message);
 void clearBuffer();

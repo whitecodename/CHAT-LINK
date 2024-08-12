@@ -33,9 +33,14 @@ typedef enum {
     false, true
 } bool;
 
+typedef enum {
+    ERROR = -1, SUCCESS
+} Status;
+
 typedef struct {
     int fd;
     int port;
+    char err_msg[BUF_SIZE_1];
 } Server;
 
 typedef struct {
@@ -45,9 +50,10 @@ typedef struct {
 } Client;
 
 typedef struct {
-    struct pollfd *fds;
     int size, active_size;
-} Fds;
+    struct pollfd *fds;
+    Client *clients;
+} Hosts;
 
 #include "utils.h"
 #include "socket.h"

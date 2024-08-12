@@ -5,15 +5,18 @@ char* get_hostname(HOST host)
     return host == SERVER ? "SERVER" : "CLIENT";
 }
 
-void server_redirect_to_error(char *message)
+void server_redirect_to_error(Server *server)
 {
-    redirect_to_error(SERVER, message);
+    redirect_to_error(SERVER, server->err_msg);
+
+    if (server->fd != ERROR) {
+        close(server->fd);
+    }
 }
 
 void redirect_to_error(HOST host, char *message)
 {
     fprintf(stderr, "%s: %s\n", get_hostname(host), message);
-    exit(1);
 }
 
 void client_redirect_to_error(char *message)
