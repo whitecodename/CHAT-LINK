@@ -33,8 +33,6 @@ int main(int argc, char *argv[])
             continue;
         }
 
-        printf("dddd\n");
-
         /* Check for ready fds */
         for (int i = 0; i < hosts.active_size; i++) {
             struct pollfd *poll_fd = &hosts.fds[i];
@@ -48,7 +46,6 @@ int main(int argc, char *argv[])
             if (poll_fd->fd == server.fd) {
                 accept_client(&server, &hosts);
             } else {
-                fprintf(stderr, "FD (%d)\n", poll_fd->fd);
                 read_client_message(&server, &hosts, poll_fd, i);
             }
         }
@@ -57,9 +54,11 @@ int main(int argc, char *argv[])
     prog_status = EXIT_SUCCESS;
 
 err:
+    /* Free memory */
     close(server.fd);
     free_hosts(&hosts);
 
+    /* Redirect to error */
     if (server.err_msg != NULL) {
         server_redirect_to_error(&server);
     }

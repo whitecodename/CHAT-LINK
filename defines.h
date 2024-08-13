@@ -18,7 +18,7 @@
 
 #define LISTENING_PORT 5094
 #define MAX_CLIENTS 10
-#define BUF_SIZE_1 64
+#define BUF_SIZE_1 128
 #define BUF_SIZE_2 1024
 #define BUF_SIZE_3 (BUF_SIZE_2 * 2)
 #define START_POLL_SIZE (1 + 5)
@@ -40,10 +40,11 @@ typedef enum {
 typedef struct {
     int fd;
     int port;
-    char err_msg[BUF_SIZE_1];
+    char err_msg[BUF_SIZE_2];
 } Server;
 
 typedef struct {
+    bool connected;
     int fd;
     char name[BUF_SIZE_1];
     char msg[BUF_SIZE_2];

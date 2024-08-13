@@ -1,15 +1,18 @@
 #include "socket.h"
 
+/* Connect socket to socket address */
 int do_connect(int socket_fd, struct sockaddr *socket_addr)
 {
     return connect(socket_fd, socket_addr, sizeof(*socket_addr));
 }
 
+/* Bind socket to socket address */
 int do_bind(int socket_fd, struct sockaddr *socket_addr)
 {
     return bind(socket_fd, socket_addr, sizeof(*socket_addr));
 }
 
+/* Send message */
 int send_msg(int socket_fd, char *message)
 {
     if(socket_fd == -1)
@@ -18,16 +21,21 @@ int send_msg(int socket_fd, char *message)
         return send(socket_fd, message, strlen(message), 0);
 }
 
+/* Receive message */
 int recv_msg(int socket_fd, char *buffer, int size)
 {
     if(socket_fd == -1)
         return -1;
-    else
+    else{
+        memset(buffer, '\0', size);
         return recv(socket_fd, buffer, size, 0);
+    }
 }
 
+/* Initialize server port */
 Status init_server_port(Server *server, int argc, char *argv[])
 {
+    /* Get port from command line */
     if (argc < 2) {
         return ERROR;
     }
@@ -37,6 +45,7 @@ Status init_server_port(Server *server, int argc, char *argv[])
     return SUCCESS;
 }
 
+/* Initialize server socket */
 Status init_server_socket(Server *server, int argc, char *argv[])
 {
     /* Get port from command line */
@@ -45,12 +54,14 @@ Status init_server_socket(Server *server, int argc, char *argv[])
         return ERROR;
     }
 
+    /* Create socket */
     int socket_fd = socket(AF_INET, SOCK_STREAM, 0);
     if (socket_fd == ERROR) {
         strcpy(server->err_msg, "Failed to create socket");
         return ERROR;
     }
 
+    /* Initializing socket fd */
     server->fd = socket_fd;
 
     /* Initializing socket address */
@@ -72,6 +83,7 @@ Status init_server_socket(Server *server, int argc, char *argv[])
     return SUCCESS;
 }
 
+/* Initialize socket address */
 void init_socket_address(struct sockaddr_in *socket_addr, int port)
 {
     socket_addr->sin_family = AF_INET;
@@ -107,14 +119,17 @@ Status init_fds(Hosts *hosts, Server *server)
     return SUCCESS;
 }
 
+/* Check if fd is ready */
 bool fd_is_ready(struct pollfd *poll_fd) {
     return (poll_fd->revents & POLLIN) != 0;
 }
 
+/* Get client from Hosts structure */
 Client* get_client(Hosts *hosts, int i) {
     return &hosts->clients[i];
 }
 
+/* Find client in Hosts structure */
 Client* find_client(Hosts *hosts, int fd) {
     for (int i = 0; i < hosts->active_size - 1; i++) {
         Client *client = get_client(hosts, i);
@@ -125,24 +140,32 @@ Client* find_client(Hosts *hosts, int fd) {
     return NULL;
 }
 
+
+/* Accept client */
 Status accept_client(Server *server, Hosts *hosts)
 {
+    /* Accept client */
     int client_fd = accept(server->fd, NULL, NULL);
     if (client_fd == ERROR) {
         strcpy(server->err_msg, "Failed to accept connection");
         return ERROR;
     }
 
+    /* Add client in Hosts structure */
     if (hosts->active_size >= hosts->size) {
         resize_fds(hosts);
     }
 
+    /* Add client in Hosts structure */
     Client *client = append_client(hosts, client_fd);
     char buffer[BUF_SIZE_2];
     
+    /* Send message to client */
     server_message("New client: %d", client->fd);
-    sprintf(buffer, "Welcome [%d]\n", client->fd);
+    memset(buffer, '\0', sizeof buffer);
+    sprintf(buffer, "Enter your name: ");
 
+    /* Send message to client */
     int status = send_msg(client->fd, buffer);
     if (status == ERROR) {
         strcpy(server->err_msg, "Failed to send message");
@@ -152,6 +175,7 @@ Status accept_client(Server *server, Hosts *hosts)
     return SUCCESS;
 }
 
+/* Resize fds structure */
 void resize_fds(Hosts *hosts) {
     hosts->size *= 2;
     hosts->fds = realloc(hosts->fds, sizeof(*(hosts->fds)) * hosts->size);
@@ -166,6 +190,9 @@ Client* append_client(Hosts *hosts, int client_fd)
     /* Initialize client in Client structure */
     Client *client = get_client(hosts, active_size - 1);
     client->fd = client_fd;
+    client->connected = false;
+    client->name[0] = '\0';
+    client->msg[0] = '\0';
 
     /* Initialize client in poll_fd structure */
     struct pollfd *fd = &hosts->fds[active_size]; // Last element
@@ -185,21 +212,34 @@ int read_client_message(Server *server, Hosts *hosts, struct pollfd *poll_fd, in
     int read_count;
     Status status;
 
+    /* Send message to client */
     Client *sender = find_client(hosts, poll_fd->fd);
 
     if (!sender) {
-        sprintf(server->err_msg, "Failed to find client %d", poll_fd->fd);
+        memset(server->err_msg, '\0', sizeof server->err_msg);
+        sprintf(server->err_msg, "Failed to find %s", sender->name);
         return ERROR;
     }
 
+    /* Send message to client */
+    memset(msg_to_send, '\0', sizeof msg_to_send);
+    sprintf(msg_to_send, "> ");
+    int sta = send_msg(sender->fd, msg_to_send);
+    if (sta == ERROR) {
+        strcpy(server->err_msg, "Failed to send message");
+        return ERROR;
+    }
+
+    /* Read message from client */
+    memset(sender->msg, '\0', sizeof sender->msg);
     read_count = recv_msg(sender->fd, sender->msg, sizeof sender->msg);
 
     /* Check for errors */
     if (read_count <= 0) {
         if (read_count == ERROR) {
-            server_message("Failed to read message from client %d", sender->fd);
+            server_message("Failed to read message from %s", sender->name);
         } else {
-            server_message("Client %d closed connection", sender->fd);
+            server_message("%s closed connection", sender->name);
         }
 
         /* Close client socket */
@@ -219,16 +259,29 @@ int read_client_message(Server *server, Hosts *hosts, struct pollfd *poll_fd, in
 
         hosts->active_size--;
 
+        memset(sender->msg, '\0', sizeof sender->msg);
+
         return ERROR;
     }
-    
+
     /* Send message to all clients */
     server_message("Client %d message: %s", sender->fd, sender->msg);
 
-    sprintf(msg_to_send, "[%d]: %s", sender->fd, sender->msg);
-    
-    
-    status = diffuse_message(server, hosts, sender->fd, msg_to_send);
+    if (sender->connected) {
+        sprintf(msg_to_send, "[%s]: %s> ", sender->name, sender->msg);
+        memset(sender->msg, '\0', sizeof sender->msg);
+        status = diffuse_message(server, hosts, sender->fd, msg_to_send);
+    } else {
+        int n = strcspn(sender->msg, "\n");
+        
+        strncpy(sender->name, sender->msg, n);
+        memset(sender->msg, '\0', sizeof sender->msg);
+        sender->name[n] = '\0';
+        fprintf(stderr, "(%s)\n", sender->name);
+        sender->connected = true;
+    }
+
+    memset(sender->msg, '\0', sizeof sender->msg);
 
     return status;
 }
@@ -240,7 +293,6 @@ Status diffuse_message(Server *server, Hosts *hosts, int sender_fd, char msg[BUF
 
     /* Send message to all clients except sender */
     for(int j = 0; j < hosts->active_size; j++) {
-        fprintf(stderr, "diffuse_message: for loop\n");
         client_fd = hosts->fds[j].fd;
 
         /* Skip sender and server */

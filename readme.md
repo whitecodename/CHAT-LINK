@@ -15,6 +15,7 @@ This is a simple chat server application written in C. It uses sockets and the `
   - [Compilation](#compilation)
   - [Usage](#usage)
   - [Contributing](#contributing)
+    - [Needed](#needed)
   - [License](#license)
 
 ## Features
@@ -63,7 +64,7 @@ gcc -o chat-link chat-link.c socket.c utils.c
 
    **Example :**
    ```bash
-   ./chat-link 4092
+   ./chat-link 4900
    ```
 
 2. **Connect Clients**: Use a client such as Netcat or any other socket client to connect to the server:
@@ -74,16 +75,20 @@ gcc -o chat-link chat-link.c socket.c utils.c
 
    **Example :**
    ```bash
-   nc localhost 4092
+   nc localhost 4900
    ```
 
-   Multiple clients can connect to the server simultaneously. It takes up to 5 clients.
+   Multiple clients can connect to the server simultaneously.
 
 3. **Chat**: Once connected, you can start sending messages. Messages from any client will be broadcast to all other connected clients.
 
 ## Contributing
 
 Contributions are welcome! Please submit an issue or a pull request for any improvements.
+
+### Needed
+
+When a client disconnects and reconnects, the server has to wait for the same client to send a message before it can continue running.
 
 ## License
 
